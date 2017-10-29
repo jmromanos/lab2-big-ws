@@ -1,46 +1,41 @@
+buildscript{
+    repositories{
+        jcenter()
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'no.nils:wsdl2java:0.6'
+    }
+}
+
 plugins {
     id 'org.springframework.boot' version '1.5.7.RELEASE'
 }
 
 apply plugin: 'java'
+apply plugin :'no.nils.wsdl2java'
 apply plugin: 'eclipse-wtp'
 apply plugin: 'idea'
 
 sourceSets.main.java.srcDirs += "${buildDir}/generated-sources/jaxb"
 
-task genJaxb {
-    ext.sourcesDir = "${buildDir}/generated-sources/jaxb"
-    ext.schema = "src/main/resources/translator.xsd"
+xsd2java {
+  encoding = 'utf-8'
+  xsdsToGenerate = [
+      ["src/main/resources/translator.xsd",'translator.web.ws.schema']
+  ]
+  generatedXsdDir = file("${buildDir}/generated-sources/jaxb")
+}
 
-	inputs.file ext.schema
-    outputs.dir ext.sourcesDir
-
-
-    doFirst() {
-        project.ant {
-            taskdef name: "xjc", classname: "com.sun.tools.xjc.XJCTask",
-                    classpath: configurations.jaxb.asPath
-            mkdir(dir: sourcesDir)
-
-            xjc(destdir: sourcesDir, schema: schema, encoding: 'UTF-8') {
-                arg(value: "-wsdl")
-                produces(dir: sourcesDir, includes: "**/*.java")
-            }
-        }
-        
-    }
+tasks.withType(JavaCompile) {
+    options.fork = true
 }
 
 task afterEclipseImport {
-	dependsOn "genJaxb"
+  dependsOn "xsd2java"
 }
 
-compileJava.dependsOn genJaxb
-
-
-configurations {
-    jaxb
-}
+compileJava.dependsOn xsd2java
 
 
 repositories {
@@ -54,9 +49,5 @@ dependencies {
     compile "org.springframework.boot:spring-boot-starter-web-services"
     compile "org.apache.httpcomponents:httpclient"
     compile "wsdl4j:wsdl4j:1.6.3"
-
-    jaxb 	"com.sun.xml.bind:jaxb-core:2.2.11"
-    jaxb 	"com.sun.xml.bind:jaxb-xjc:2.2.11"
-
     testCompile "org.springframework.boot:spring-boot-starter-test"
 }
